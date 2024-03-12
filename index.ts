@@ -223,7 +223,7 @@ const main = async () => {
 
     const blockSet = new Set();
     logseq.DB.onChanged(async (e) => {
-        if (e.txMeta?.outlinerOp !== 'insertBlocks') {
+        if (e.txMeta?.outlinerOp !== 'insert-blocks') {
             blockSet.add(e.blocks[0]?.uuid);
             doc.querySelectorAll('.external-link')?.forEach((extLink) =>
                 setFavicon(extLink)
