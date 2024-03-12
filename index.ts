@@ -1,7 +1,8 @@
 import '@logseq/libs';
 
 const DEFAULT_REGEX = {
-    wrappedInCommand: /(\{\{(video)\s*(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})\s*\}\})/gi,
+    wrappedInCommand:
+        /(\{\{(video)\s*(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})\s*\}\})/gi,
     htmlTitleTag: /<title(\s[^>]+)*>([^<]*)<\/title>/,
     line: /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi,
     imageExtension: /\.(gif|jpe?g|tiff?|png|webp|bmp|tga|psd|ai)$/i,
@@ -42,7 +43,13 @@ async function getTitle(url) {
     return '';
 }
 
-async function convertUrlToMarkdownLink(url, text, urlStartIndex, offset, applyFormat) {
+async function convertUrlToMarkdownLink(
+    url,
+    text,
+    urlStartIndex,
+    offset,
+    applyFormat
+) {
     const title = await getTitle(url);
     if (title === '') {
         return { text, offset };
@@ -73,7 +80,7 @@ function isWrappedInCommand(text, url) {
         return false;
     }
 
-    return wrappedLinks.some(command => command.includes(url));
+    return wrappedLinks.some((command) => command.includes(url));
 }
 
 async function getFormatSettings() {
@@ -110,11 +117,26 @@ async function parseBlockForLink(uuid: string) {
     for (const url of urls) {
         const urlIndex = text.indexOf(url, offset);
 
-        if (isAlreadyFormatted(text, url, urlIndex, formatSettings.formatBeginning) || isImage(url) || isWrappedInCommand(text, url)) {
+        if (
+            isAlreadyFormatted(
+                text,
+                url,
+                urlIndex,
+                formatSettings.formatBeginning
+            ) ||
+            isImage(url) ||
+            isWrappedInCommand(text, url)
+        ) {
             continue;
         }
 
-        const updatedTitle = await convertUrlToMarkdownLink(url, text, urlIndex, offset, formatSettings.applyFormat);
+        const updatedTitle = await convertUrlToMarkdownLink(
+            url,
+            text,
+            urlIndex,
+            offset,
+            formatSettings.applyFormat
+        );
         text = updatedTitle.text;
         offset = updatedTitle.offset;
     }
@@ -165,38 +187,51 @@ const main = async () => {
         for (let i = 0; i < mutationsList.length; i++) {
             const addedNode = mutationsList[i].addedNodes[0];
             if (addedNode && addedNode.childNodes.length) {
-                const extLinkList = addedNode.querySelectorAll('.external-link');
+                const extLinkList =
+                    addedNode.querySelectorAll('.external-link');
                 if (extLinkList.length) {
                     extLinksObserver.disconnect();
                     for (let i = 0; i < extLinkList.length; i++) {
                         setFavicon(extLinkList[i]);
                     }
 
-                    extLinksObserver.observe(appContainer, extLinksObserverConfig);
+                    extLinksObserver.observe(
+                        appContainer,
+                        extLinksObserverConfig
+                    );
                 }
             }
         }
     });
 
     setTimeout(() => {
-        doc.querySelectorAll('.external-link')?.forEach(extLink => setFavicon(extLink));
+        doc.querySelectorAll('.external-link')?.forEach((extLink) =>
+            setFavicon(extLink)
+        );
         extLinksObserver.observe(appContainer, extLinksObserverConfig);
     }, 500);
 
-    logseq.Editor.registerBlockContextMenuItem('Format url titles', async ({ uuid }) => {
-        await parseBlockForLink(uuid);
-        const extLinkList: NodeListOf<HTMLAnchorElement> = doc.querySelectorAll('.external-link');
-        extLinkList.forEach(extLink => setFavicon(extLink));
-    });
+    logseq.Editor.registerBlockContextMenuItem(
+        'Format url titles',
+        async ({ uuid }) => {
+            await parseBlockForLink(uuid);
+            const extLinkList: NodeListOf<HTMLAnchorElement> =
+                doc.querySelectorAll('.external-link');
+            extLinkList.forEach((extLink) => setFavicon(extLink));
+        }
+    );
 
     const blockSet = new Set();
     logseq.DB.onChanged(async (e) => {
         if (e.txMeta?.outlinerOp !== 'insertBlocks') {
             blockSet.add(e.blocks[0]?.uuid);
-            doc.querySelectorAll('.external-link')?.forEach(extLink => setFavicon(extLink));
+            doc.querySelectorAll('.external-link')?.forEach((extLink) =>
+                setFavicon(extLink)
+            );
             return;
         }
 
+        console.log('e', e);
         await blockSet.forEach((uuid) => parseBlockForLink(uuid));
         blockSet.clear();
     });
