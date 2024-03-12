@@ -163,7 +163,7 @@ const main = async () => {
     }`);
 
     const doc = parent.document;
-    const appContainer = doc.getElementById('app-container');
+    const appContainer = doc.getElementById('app-container')!;
 
     // External links favicons
     const setFavicon = (extLinkEl: HTMLAnchorElement) => {
@@ -186,13 +186,17 @@ const main = async () => {
     const extLinksObserver = new MutationObserver((mutationsList, observer) => {
         for (let i = 0; i < mutationsList.length; i++) {
             const addedNode = mutationsList[i].addedNodes[0];
-            if (addedNode && addedNode.childNodes.length) {
+            if (
+                addedNode &&
+                addedNode.childNodes.length &&
+                addedNode instanceof Element
+            ) {
                 const extLinkList =
                     addedNode.querySelectorAll('.external-link');
                 if (extLinkList.length) {
                     extLinksObserver.disconnect();
                     for (let i = 0; i < extLinkList.length; i++) {
-                        setFavicon(extLinkList[i]);
+                        setFavicon(extLinkList[i] as HTMLAnchorElement);
                     }
 
                     extLinksObserver.observe(
@@ -206,7 +210,7 @@ const main = async () => {
 
     setTimeout(() => {
         doc.querySelectorAll('.external-link')?.forEach((extLink) =>
-            setFavicon(extLink)
+            setFavicon(extLink as HTMLAnchorElement)
         );
         extLinksObserver.observe(appContainer, extLinksObserverConfig);
     }, 500);
@@ -221,17 +225,16 @@ const main = async () => {
         }
     );
 
-    const blockSet = new Set();
+    const blockSet = new Set<string>();
     logseq.DB.onChanged(async (e) => {
         if (e.txMeta?.outlinerOp !== 'insert-blocks') {
-            blockSet.add(e.blocks[0]?.uuid);
+            e.blocks[0]?.uuid && blockSet.add(e.blocks[0]?.uuid);
             doc.querySelectorAll('.external-link')?.forEach((extLink) =>
-                setFavicon(extLink)
+                setFavicon(extLink as HTMLAnchorElement)
             );
             return;
         }
 
-        console.log('e', e);
         await blockSet.forEach((uuid) => parseBlockForLink(uuid));
         blockSet.clear();
     });
