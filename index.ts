@@ -181,23 +181,35 @@ const main = async () => {
         extLinkEl.insertAdjacentElement('afterbegin', fav);
     };
 
-    // Favicons observer
     const extLinksObserverConfig = { childList: true, subtree: true };
     const extLinksObserver = new MutationObserver((mutationsList, observer) => {
-        for (let i = 0; i < mutationsList.length; i++) {
-            const addedNode = mutationsList[i].addedNodes[0];
-            if (
-                addedNode &&
-                addedNode.childNodes.length &&
-                addedNode instanceof Element
-            ) {
-                const extLinkList =
-                    addedNode.querySelectorAll('.external-link');
-                if (extLinkList.length) {
+        for (const element of mutationsList) {
+            const addedNode = element.addedNodes[0] as Element;
+            if (addedNode?.childNodes.length) {
+                if (addedNode.querySelector('.external-link')) {
                     extLinksObserver.disconnect();
-                    for (let i = 0; i < extLinkList.length; i++) {
-                        setFavicon(extLinkList[i] as HTMLAnchorElement);
-                    }
+
+                    (async (addedNode) => {
+                        const blockId = addedNode
+                            .querySelectorAll('.block-content')[0]
+                            .getAttribute('blockid');
+                        if (blockId) {
+                            try {
+                                await parseBlockForLink(blockId);
+                                setTimeout(() => {
+                                    addedNode
+                                        .querySelectorAll('.external-link')
+                                        .forEach((extLink) => {
+                                            const extLinkElement =
+                                                extLink as HTMLAnchorElement;
+                                            setFavicon(extLinkElement);
+                                        });
+                                }, 250);
+                            } catch (error) {
+                                console.error('Error in async task:', error);
+                            }
+                        }
+                    })(addedNode);
 
                     extLinksObserver.observe(
                         appContainer,
@@ -224,20 +236,6 @@ const main = async () => {
             extLinkList.forEach((extLink) => setFavicon(extLink));
         }
     );
-
-    const blockSet = new Set<string>();
-    logseq.DB.onChanged(async (e) => {
-        if (e.txMeta?.outlinerOp !== 'insert-blocks') {
-            e.blocks[0]?.uuid && blockSet.add(e.blocks[0]?.uuid);
-            doc.querySelectorAll('.external-link')?.forEach((extLink) =>
-                setFavicon(extLink as HTMLAnchorElement)
-            );
-            return;
-        }
-
-        await blockSet.forEach((uuid) => parseBlockForLink(uuid));
-        blockSet.clear();
-    });
 };
 
 logseq.ready(main).catch(console.error);
